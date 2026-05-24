@@ -1,0 +1,222 @@
+PRAGMA foreign_keys = ON;
+
+-- =========================
+-- LOOKUP TABLES
+-- =========================
+
+CREATE TABLE INDUSTRY (
+    industry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    industry_name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE EVENT_TYPE (
+    event_type_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type_name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE CATERING_TYPE (
+    catering_type_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    catering_type_name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE STAFF_ROLE (
+    role_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role_name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE SKILL (
+    skill_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    skill_name TEXT NOT NULL UNIQUE
+);
+
+-- =========================
+-- CLIENT TABLES
+-- =========================
+
+CREATE TABLE CLIENT (
+    client_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    industry_id INTEGER NOT NULL,
+    client_name TEXT NOT NULL,
+    client_type TEXT DEFAULT 'Limited Company',
+    invoice_terms_days INTEGER DEFAULT 30,
+    vat_registered INTEGER DEFAULT 1,
+
+    FOREIGN KEY (industry_id)
+        REFERENCES INDUSTRY(industry_id)
+);
+
+CREATE TABLE CLIENT_CONTACT (
+    contact_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL,
+    contact_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    is_primary_contact INTEGER DEFAULT 0,
+
+    FOREIGN KEY (client_id)
+        REFERENCES CLIENT(client_id)
+);
+
+-- =========================
+-- VENUE TABLE
+-- =========================
+
+CREATE TABLE VENUE (
+    venue_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venue_name TEXT NOT NULL,
+    venue_capacity INTEGER NOT NULL,
+    venue_location TEXT NOT NULL,
+    venue_hourly_rate REAL NOT NULL,
+
+    CHECK (venue_capacity > 0),
+    CHECK (venue_hourly_rate >= 0)
+);
+
+-- =========================
+-- STAFF TABLES
+-- =========================
+
+CREATE TABLE STAFF (
+    staff_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role_id INTEGER NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    phone TEXT,
+    employment_status TEXT DEFAULT 'Active',
+
+    FOREIGN KEY (role_id)
+        REFERENCES STAFF_ROLE(role_id)
+);
+
+CREATE TABLE STAFF_SKILL (
+    staff_id INTEGER,
+    skill_id INTEGER,
+
+    PRIMARY KEY (staff_id, skill_id),
+
+    FOREIGN KEY (staff_id)
+        REFERENCES STAFF(staff_id),
+
+    FOREIGN KEY (skill_id)
+        REFERENCES SKILL(skill_id)
+);
+
+-- =========================
+-- EQUIPMENT TABLE
+-- =========================
+
+CREATE TABLE EQUIPMENT (
+    equipment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    equipment_name TEXT NOT NULL UNIQUE,
+    maintenance_status TEXT DEFAULT 'Operational'
+);
+
+-- =========================
+-- EVENT TABLE
+-- =========================
+
+CREATE TABLE EVENT (
+    event_id INTEGER PRIMARY KEY,
+    client_id INTEGER NOT NULL,
+    venue_id INTEGER NOT NULL,
+    coordinator_staff_id INTEGER NOT NULL,
+    event_type_id INTEGER NOT NULL,
+    catering_type_id INTEGER NOT NULL,
+
+    event_name TEXT NOT NULL,
+    event_date DATE NOT NULL,
+    event_time TEXT,
+    attendee_count INTEGER,
+    duration_hours INTEGER,
+    booking_date DATE,
+    event_status TEXT,
+    special_requirements TEXT,
+
+    estimated_cost REAL,
+    actual_cost REAL,
+    total_revenue REAL,
+    cancellation_fee REAL DEFAULT 0,
+
+    CHECK (attendee_count >= 0),
+    CHECK (duration_hours > 0),
+
+    FOREIGN KEY (client_id)
+        REFERENCES CLIENT(client_id),
+
+    FOREIGN KEY (venue_id)
+        REFERENCES VENUE(venue_id),
+
+    FOREIGN KEY (coordinator_staff_id)
+        REFERENCES STAFF(staff_id),
+
+    FOREIGN KEY (event_type_id)
+        REFERENCES EVENT_TYPE(event_type_id),
+
+    FOREIGN KEY (catering_type_id)
+        REFERENCES CATERING_TYPE(catering_type_id)
+);
+
+-- =========================
+-- ASSOCIATIVE TABLES
+-- =========================
+
+CREATE TABLE EVENT_STAFF (
+    event_id INTEGER,
+    staff_id INTEGER,
+    assignment_role TEXT,
+    hours_worked REAL,
+    overtime_hours REAL DEFAULT 0,
+
+    PRIMARY KEY (event_id, staff_id),
+
+    FOREIGN KEY (event_id)
+        REFERENCES EVENT(event_id),
+
+    FOREIGN KEY (staff_id)
+        REFERENCES STAFF(staff_id)
+);
+
+CREATE TABLE EVENT_EQUIPMENT (
+    event_id INTEGER,
+    equipment_id INTEGER,
+
+    PRIMARY KEY (event_id, equipment_id),
+
+    FOREIGN KEY (event_id)
+        REFERENCES EVENT(event_id),
+
+    FOREIGN KEY (equipment_id)
+        REFERENCES EQUIPMENT(equipment_id)
+);
+
+-- =========================
+-- FINANCIAL TABLES
+-- =========================
+
+CREATE TABLE INVOICE (
+    invoice_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    invoice_date DATE,
+    invoice_amount REAL,
+    vat_amount REAL,
+    payment_status TEXT DEFAULT 'Pending',
+
+    FOREIGN KEY (event_id)
+        REFERENCES EVENT(event_id)
+);
+
+-- =========================
+-- CLIENT SATISFACTION
+-- =========================
+
+CREATE TABLE CLIENT_SATISFACTION (
+    satisfaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    satisfaction_score INTEGER,
+    feedback_comments TEXT,
+
+    CHECK (satisfaction_score BETWEEN 1 AND 10),
+
+    FOREIGN KEY (event_id)
+        REFERENCES EVENT(event_id)
+);
